@@ -1,0 +1,8 @@
+# Cargo build artifacts (matches target directories in nested Rust crates too)
+target/
+
+# Rust source backups created by editors or tooling
+**/*.rs.bk
+
+# Local macOS Finder metadata
+.DS_Store
