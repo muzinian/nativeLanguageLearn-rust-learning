@@ -1,13 +1,13 @@
 # Rust 学习进度
 
-最后更新：2026-07-28
+最后更新：2026-07-29
 
 ## 当前状态
 
-- 周/课次：第 1 周，第 2 课（关键词过滤、大小写选项与单元测试）
+- 周/课次：第 1 周，第 3 课（日志级别建模、解析与统计）
 - 阶段：complete
 - 难度：foundation
-- 下一课：第 3 课（日志级别建模）
+- 下一课：第 4 课（模块边界与可见性）
 
 ## 已通过的验收
 
@@ -19,6 +19,9 @@
 - `cargo run -- fixtures/filter.log RETRY`：无匹配，输出 `matched: 0`。
 - `cargo run -- fixtures/filter.log RETRY --ignore-case`：原样输出两条匹配日志，输出 `matched: 2`。
 - `line_matches` 的 4 条单元测试：精确匹配、默认大小写不匹配、忽略大小写匹配、关键字不存在，全部通过。
+- `cargo run -- fixtures/filter.log retry`：原样输出两条匹配日志，统计为 `matched: 2`、`INFO: 1, WARN: 0, ERROR: 1`。
+- `LogLevel`、`LogRecord`、`parse_level`、`split_log_line`、`parse_log_line` 的单元测试全部通过；总计 `11 passed; 0 failed`。
+- 本课结束时再次执行 `cargo fmt --check`、`cargo check`、`cargo test`、`cargo clippy -- -D warnings`，全部通过。
 
 ## 已确认理解
 
@@ -31,12 +34,16 @@
 - `String` 是拥有的文本，`&str` 是文本借用；函数参数 `line: &str` 按值传递的是引用值，而非整段文本。
 - 纯函数 `line_matches(line, keyword, ignore_case) -> bool` 可脱离文件和终端直接测试。
 - `#[cfg(test)]` 条件编译测试模块，`#[test]` 注册测试函数，`assert!` 验证布尔条件。
+- `enum` 是枚举类型，`Info`、`Warn`、`Error` 是其单元变体；`match` 可穷尽地处理每个变体。
+- `struct LogRecord` 建模一条日志的级别与拥有所有权的消息；`#[derive(Debug, PartialEq)]` 允许测试中的比较和失败诊断。
+- `Option::map` 将 `Some(T)` 转换为 `Some(U)` 并保留 `None`；`|value| expression` 是返回该表达式的闭包。
+- `match` guard（`模式 if 条件`）在模式匹配后再判断条件；guard 为假时仍需后续匹配臂覆盖该值。
 
 ## 提示与复现
 
-- 本课最高提示等级：H4（对学生代码作精确逻辑修正）。
-- 下次课前闭卷复现：写出 `line_matches(line: &str, keyword: &str, ignore_case: bool) -> bool`，并为“大小写不同、忽略大小写开启”写一条测试。
+- 本课最高提示等级：H4（对学生代码作精确逻辑与 Clippy 诊断解释）。
+- 下次课前闭卷复现：从 `&str` 写出 `parse_level`、`split_log_line` 与 `parse_log_line` 的职责，并说明 `Some(record) if 条件` 为假时为何需要另一个 `Some(_)` 或 `_` 分支。
 
 ## 下一步
 
-开始第 3 课前，先完成上述 5～10 分钟闭卷复现；之后学习用 `struct`、`enum` 和 `match` 建模日志级别。
+开始第 4 课前，先完成上述 5～10 分钟闭卷复现；之后把单文件程序按输入、解析、筛选与报告职责拆分为模块，并学习 `mod`、`use`、`pub` 与可见性边界。
