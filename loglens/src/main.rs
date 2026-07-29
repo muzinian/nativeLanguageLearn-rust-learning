@@ -51,17 +51,16 @@ fn main() {
             let mut matched_count = 0;
             for line in text.lines() {
                 match parse_log_line(line) {
-                    Some(record) => {
-                        if line_matches(line, &keyword, ignore_case) {
-                            matched_count += 1;
-                            match record.level {
-                                LogLevel::Info => info_count += 1,
-                                LogLevel::Warn => warn_count += 1,
-                                LogLevel::Error => error_cout += 1,
-                            }
-                            println!("{line}")
+                    Some(record) if line_matches(line, &keyword, ignore_case) => {
+                        matched_count += 1;
+                        match record.level {
+                            LogLevel::Info => info_count += 1,
+                            LogLevel::Warn => warn_count += 1,
+                            LogLevel::Error => error_cout += 1,
                         }
+                        println!("{line}")
                     }
+                    Some(_) => {}
                     None => {
                         // eprintln!("无法解析日志行: {line}");
                     }
