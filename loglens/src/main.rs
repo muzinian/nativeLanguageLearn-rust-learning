@@ -51,6 +51,8 @@ fn main() {
             let mut matched_count = 0;
             for line in text.lines() {
                 match parse_log_line(line) {
+                    //改写为 cargo clippy 推荐方式，但是注意此时要注意，增加下面的 Some(_)
+                    //这里 Some 和 if 组成一起，所以，如果匹配到了 Some(record)，但是 if 报错，说明是一个没有匹配上的 Some 逻辑，因此要有一个 Some(_) 承接这个分支，或者给 None 改成 _ 。
                     Some(record) if line_matches(line, &keyword, ignore_case) => {
                         matched_count += 1;
                         match record.level {
