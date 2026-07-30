@@ -4,10 +4,10 @@
 
 ## 当前状态
 
-- 周/课次：第 1 周，第 4 课（模块边界、可见性与单元测试）
+- 周/课次：第 1 周，第 5 课（真实日志调查与端到端演示）
 - 阶段：complete
 - 难度：foundation
-- 下一课：第 5 课（真实日志调查与端到端演示）
+- 下一课：周末闭卷复现；之后进入第 2 周第 1 课（错误分类与 `?`）
 
 ## 已通过的验收
 
@@ -23,6 +23,8 @@
 - `LogLevel`、`LogRecord`、`parse_level`、`split_log_line`、`parse_log_line` 的单元测试全部通过；总计 `11 passed; 0 failed`。
 - 本课结束时再次执行 `cargo fmt --check`、`cargo check`、`cargo test`、`cargo clippy -- -D warnings`，全部通过。
 - 模块重构后 `cargo test` 仍为 `11 passed; 0 failed`，`cargo clippy -- -D warnings` 通过；关键词筛选与级别统计的端到端输出没有回归。
+- 固定验收覆盖精确匹配、忽略大小写、无匹配、读取失败与参数错误；退出码与输出均符合约定。
+- 使用 `fixtures/unicode.log` 完成脱敏样本调查：关键词“登录”命中 3 条，INFO、WARN、ERROR 各 1 条；人工核对三条原文与程序输出一致。
 
 ## 已确认理解
 
@@ -43,15 +45,16 @@
 - `crate`、`self`、`super` 分别从 crate 根、当前模块和父模块开始解析路径；`::` 在现代 Rust 中用于外部 crate 路径，而非当前项目根。
 - `pub(crate)` 只向当前 crate 开放；简单数据模型可直接开放字段，不必机械地编写 getter/setter。
 - `model` 保存 `LogLevel` 与 `LogRecord`，`parser` 将 `&str` 日志行解析为 `Option<LogRecord>`，`matcher` 承担关键词匹配；各模块的测试紧邻被测代码。
+- 调查报告应将可复现命令、原始证据、结论与推测分开；小样本没有用户标识和时间字段时，不能推断事件因果关系。
 
 ## 提示与复现
 
 - 本课最高提示等级：H4（对学生代码作精确逻辑与 Clippy 诊断解释）。
-- 下次课前闭卷复现：画出 `main`、`model`、`parser`、`matcher` 的依赖关系，并说明每个模块的输入、输出和不负责的事情。
+- 周末闭卷复现：从空工程在 60 分钟内重建“读取—过滤—统计”主流程，并画出 `main`、`model`、`parser`、`matcher` 的依赖关系。
 
 ## 下一步
 
-开始第 5 课前，先完成上述 5～10 分钟闭卷复现；之后用一份真实日志完成一次端到端调查与结果说明。
+完成周末闭卷复现后，进入第 2 周：区分参数、I/O 与解析错误，并学习 `?` 运算符。
 
 ## Git 提交流程
 
