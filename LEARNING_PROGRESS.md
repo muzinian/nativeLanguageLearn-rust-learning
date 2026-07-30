@@ -1,13 +1,13 @@
 # Rust 学习进度
 
-最后更新：2026-07-29
+最后更新：2026-07-30
 
 ## 当前状态
 
-- 周/课次：第 1 周，第 3 课（日志级别建模、解析与统计）
+- 周/课次：第 1 周，第 4 课（模块边界、可见性与单元测试）
 - 阶段：complete
 - 难度：foundation
-- 下一课：第 4 课（模块边界与可见性）
+- 下一课：第 5 课（真实日志调查与端到端演示）
 
 ## 已通过的验收
 
@@ -22,6 +22,7 @@
 - `cargo run -- fixtures/filter.log retry`：原样输出两条匹配日志，统计为 `matched: 2`、`INFO: 1, WARN: 0, ERROR: 1`。
 - `LogLevel`、`LogRecord`、`parse_level`、`split_log_line`、`parse_log_line` 的单元测试全部通过；总计 `11 passed; 0 failed`。
 - 本课结束时再次执行 `cargo fmt --check`、`cargo check`、`cargo test`、`cargo clippy -- -D warnings`，全部通过。
+- 模块重构后 `cargo test` 仍为 `11 passed; 0 failed`，`cargo clippy -- -D warnings` 通过；关键词筛选与级别统计的端到端输出没有回归。
 
 ## 已确认理解
 
@@ -38,12 +39,22 @@
 - `struct LogRecord` 建模一条日志的级别与拥有所有权的消息；`#[derive(Debug, PartialEq)]` 允许测试中的比较和失败诊断。
 - `Option::map` 将 `Some(T)` 转换为 `Some(U)` 并保留 `None`；`|value| expression` 是返回该表达式的闭包。
 - `match` guard（`模式 if 条件`）在模式匹配后再判断条件；guard 为假时仍需后续匹配臂覆盖该值。
+- `mod name;` 将同级 `src/name.rs` 纳入 crate 模块树；`use crate::...` 为当前模块引入名称。
+- `crate`、`self`、`super` 分别从 crate 根、当前模块和父模块开始解析路径；`::` 在现代 Rust 中用于外部 crate 路径，而非当前项目根。
+- `pub(crate)` 只向当前 crate 开放；简单数据模型可直接开放字段，不必机械地编写 getter/setter。
+- `model` 保存 `LogLevel` 与 `LogRecord`，`parser` 将 `&str` 日志行解析为 `Option<LogRecord>`，`matcher` 承担关键词匹配；各模块的测试紧邻被测代码。
 
 ## 提示与复现
 
 - 本课最高提示等级：H4（对学生代码作精确逻辑与 Clippy 诊断解释）。
-- 下次课前闭卷复现：从 `&str` 写出 `parse_level`、`split_log_line` 与 `parse_log_line` 的职责，并说明 `Some(record) if 条件` 为假时为何需要另一个 `Some(_)` 或 `_` 分支。
+- 下次课前闭卷复现：画出 `main`、`model`、`parser`、`matcher` 的依赖关系，并说明每个模块的输入、输出和不负责的事情。
 
 ## 下一步
 
-开始第 4 课前，先完成上述 5～10 分钟闭卷复现；之后把单文件程序按输入、解析、筛选与报告职责拆分为模块，并学习 `mod`、`use`、`pub` 与可见性边界。
+开始第 5 课前，先完成上述 5～10 分钟闭卷复现；之后用一份真实日志完成一次端到端调查与结果说明。
+
+## Git 提交流程
+
+- 第 1 周后续的所有学习功能均提交到 `rust-learning-week-01`。
+- 每次提交信息写明课次和学习主题，例如：`feat: 第4课 学习模块与可见性`。
+- 仅在进入新的一周时创建对应的新分支。
