@@ -1,0 +1,4 @@
+INFO cache warmed
+WARN request retry scheduled
+ERROR request retry exhausted
+INFO request complete
