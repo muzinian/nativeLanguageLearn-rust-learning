@@ -4,7 +4,8 @@ mod parser;
 use crate::matcher::line_matches;
 use crate::model::LogLevel;
 use crate::parser::parse_log_line;
-use std::fs;
+use std::fs::File;
+use std::io::{BufRead, BufReader};
 
 #[derive(Debug)]
 enum AppError {
@@ -67,17 +68,25 @@ fn run() -> Result<(), AppError> {
         None => false,
     };
 
-    let text = fs::read_to_string(&path).map_err(|source| AppError::ReadFile { path, source })?;
+    let file = File::open(&path).map_err(|source| AppError::ReadFile {
+        path: path.clone(),
+        source,
+    })?;
+    let reader = BufReader::new(file);
     let mut matched_count = 0;
     let mut info_count = 0;
     let mut warn_count = 0;
     let mut error_count = 0;
 
-    for (index, line) in text.lines().enumerate() {
-        match parse_log_line(line) {
+    for (index, line) in reader.lines().enumerate() {
+        let line = line.map_err(|source| AppError::ReadFile {
+            path: path.clone(),
+            source,
+        })?;
+        match parse_log_line(&line) {
             //改写为 cargo clippy 推荐方式，但是注意此时要注意，增加下面的 Some(_)
             //这里 Some 和 if 组成一起，所以，如果匹配到了 Some(record)，但是 if 报错，说明是一个没有匹配上的 Some 逻辑，因此要有一个 Some(_) 承接这个分支，或者给 None 改成 _ 。
-            Some(record) if line_matches(line, &keyword, ignore_case) => {
+            Some(record) if line_matches(&line, &keyword, ignore_case) => {
                 matched_count += 1;
                 match record.level {
                     LogLevel::Info => info_count += 1,
@@ -90,7 +99,7 @@ fn run() -> Result<(), AppError> {
             None => {
                 return Result::Err(AppError::ParseLine {
                     line_number: index + 1,
-                    content: line.to_string(),
+                    content: line,
                 });
             }
         }
