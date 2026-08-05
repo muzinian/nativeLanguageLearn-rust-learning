@@ -30,14 +30,14 @@ fn main() {
                 std::process::exit(2);
             }
             AppError::ReadFile { path, source } => {
-                eprintln!("read file {path} failed::{source}");
+                eprintln!("read file {path} failed: {source}");
                 std::process::exit(1);
             }
             AppError::ParseLine {
                 line_number,
                 content,
             } => {
-                eprintln!("parse line {line_number} failed::{content}");
+                eprintln!("parse line {line_number} failed: {content}");
                 std::process::exit(3);
             }
         },
@@ -60,7 +60,7 @@ fn run() -> Result<(), AppError> {
                 true
             } else {
                 return Result::Err(AppError::Usage {
-                    message: "unknown flag".to_string() + &flag,
+                    message: format!("unknown flag: {flag}"),
                 });
             }
         }
