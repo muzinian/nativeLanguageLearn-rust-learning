@@ -6,3 +6,4 @@ target/
 
 # Local macOS Finder metadata
 .DS_Store
+.vscode
