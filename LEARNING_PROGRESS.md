@@ -4,10 +4,10 @@
 
 ## 当前状态
 
-- 周/课次：第 2 周，第 4 课（CLI 集成测试）
+- 周/课次：第 2 周，第 5 课（发布 v0.1）
 - 阶段：in_progress
 - 难度：foundation
-- 下一课：以独立进程运行 CLI，断言退出码、标准输出与标准错误。
+- 下一课：完善 README 与帮助文本，并理解 v0.1 的发布边界。
 
 ## 已通过的验收
 
@@ -29,6 +29,7 @@
 - 第 2 周第 1 课：以 `AppError` 区分参数、文件读取与日志解析错误；分别返回退出码 `2`、`1`、`3`。文件读取错误保留文件路径与底层 `io::Error`，解析错误保留 1 起始的行号与原始行内容。`cargo fmt --check`、`cargo check`、`cargo test`（11 passed）和 `cargo clippy -- -D warnings` 全部通过。
 - 第 2 周第 2 课：统一错误文本中的上下文分隔符；未知 flag、读取失败和解析失败均可从一条输出定位原因。四项质量门禁全部通过。
 - 第 2 周第 3 课：用 `File::open`、`BufReader` 和 `BufRead::lines` 替代 `read_to_string`；正常过滤、读取失败和解析失败行为保持不变。四项质量门禁通过，单元测试 `11 passed`。
+- 第 2 周第 4 课：在 `tests/cli.rs` 启动真实 `loglens` 进程，覆盖成功输出、未知 flag（退出码 2）、文件不存在（退出码 1）与非法日志（退出码 3）。四项质量门禁通过，测试总计 `15 passed`。
 
 ## 已确认理解
 
@@ -54,6 +55,7 @@
 - `map_err` 只转换 `Result` 的错误值；`?` 只在 `Ok`/`Err` 层面工作，不会匹配 `Option` 的 `Some`/`None`。
 - 格式化宏的 `{name}` 是占位符，不是借用语法；格式化通常通过 `Display::fmt(&self, ...)` 借用值。宏展开后的代码仍受所有权与借用检查；固定类型签名的业务逻辑优先使用函数而非宏。
 - `String` 会自动解引用到 `str`，因而可调用 `str` 的固有方法 `lines`；`BufReader` 的 `lines` 来自 `BufRead` trait，需把 trait 引入作用域。循环内同名 `let` 是遮蔽：`Result<String, io::Error>` 可转换为新的 `String` 绑定，而非改变同一变量的类型。
+- Cargo 的 `--bin`、`--test`、`--lib` 选择测试目标，第二个 `--` 后的参数传给 Rust 测试运行器。`Command::output()` 的 `expect` 只处理测试无法启动子进程的基础设施错误；程序的业务退出码由 `Output::status` 断言。
 
 ## 提示与复现
 
@@ -62,7 +64,7 @@
 
 ## 下一步
 
-第 2 周第 4 课：在 `tests/` 中为 CLI 建立独立进程测试，覆盖成功输出和三类失败退出码。
+第 2 周第 5 课：让一个没有项目背景的新用户能按 README 运行 LogLens，并为 v0.1 划定可交付边界。
 
 ## Git 提交流程
 
