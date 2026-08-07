@@ -11,7 +11,7 @@ cargo run -- <日志文件路径> <过滤关键字> [--ignore-case]
 cargo run -- --help
 ```
 预期输出：
-```Text
+```text
 Usage: loglens <LOG_FILE> <KEYWORD> [--ignore-case]
 
 Log format: LEVEL message
