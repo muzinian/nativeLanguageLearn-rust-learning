@@ -72,3 +72,18 @@ fn displays_help() {
     assert!(output.stderr.is_empty());
     assert_eq!(output.stdout,b"Usage: loglens <LOG_FILE> <KEYWORD> [--ignore-case]\n\nLog format: LEVEL message\nLEVEL: INFO, WARN, or ERROR\n\nExit codes: 1 read error, 2 usage error, 3 parse error\n");
 }
+
+#[test]
+fn rejects_double_space_after_level() {
+    let output = Command::new(env!("CARGO_BIN_EXE_loglens"))
+        .current_dir(env!("CARGO_MANIFEST_DIR"))
+        .args(["fixtures/invalid-spacing.log", "retry"])
+        .output()
+        .expect("loglens process should start");
+    assert_eq!(output.status.code(), Some(3));
+    assert!(output.stdout.is_empty());
+    assert_eq!(
+        String::from_utf8_lossy(&output.stderr),
+        "parse line 1 failed: INFO  retry request\n"
+    );
+}

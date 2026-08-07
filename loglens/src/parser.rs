@@ -17,6 +17,9 @@ pub(crate) fn parse_log_line(line: &str) -> Option<LogRecord> {
     let split_result = split_log_line(line);
     match split_result {
         Some((level, message)) => {
+            if message.starts_with(" ") {
+                return None;
+            }
             //map 做法，|level|是闭包，如果字段名和变量名相同，可以直接使用字段名
             parse_level(level).map(|level| LogRecord {
                 level,
@@ -73,5 +76,10 @@ mod test {
     #[test]
     fn parses_wrong_level_log_line() {
         assert_eq!(parse_log_line("TRACE something"), None)
+    }
+
+    #[test]
+    fn rejects_double_space_after_level() {
+        assert_eq!(parse_log_line("INFO  Message To Me"), None)
     }
 }
