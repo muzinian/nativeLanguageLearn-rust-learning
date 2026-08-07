@@ -28,4 +28,9 @@ mod tests {
     fn does_not_match_missing_keywor() {
         assert!(!line_matches("WARN timeout", "missing", true))
     }
+
+    #[test]
+    fn match_info_log_level() {
+        assert!(line_matches("INFO retry request", "INFO", false));
+    }
 }
