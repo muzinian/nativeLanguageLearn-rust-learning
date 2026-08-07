@@ -49,9 +49,21 @@ fn run() -> Result<(), AppError> {
     let mut args = std::env::args();
     //跳过程序名字
     let _programs = args.next();
-    let path = args.next().ok_or_else(|| AppError::Usage {
-        message: "pls input file path".to_string(),
-    })?;
+
+    let path = match args.next() {
+        Some(argument) if argument == "--help" => {
+            print_help();
+            return Ok(());
+        }
+        //必须要有这一个匹配，因为 match 会穷尽匹配，而上面 match guard 是和 Some 一起的，得不到 true 就认为 Some 分支没有匹配上
+        Some(path) => path,
+        None => {
+            return Result::Err(AppError::Usage {
+                message: "pls input file path".to_string(),
+            });
+        }
+    };
+
     let keyword = args.next().ok_or_else(|| AppError::Usage {
         message: "pls input filter".to_string(),
     })?;
@@ -107,4 +119,9 @@ fn run() -> Result<(), AppError> {
     println!("matched: {matched_count}");
     println!("INFO: {info_count},WARN: {warn_count},ERROR: {error_count}");
     Ok(())
+}
+
+fn print_help() {
+    let help_message = "Usage: loglens <LOG_FILE> <KEYWORD> [--ignore-case]\n\nLog format: LEVEL message\nLEVEL: INFO, WARN, or ERROR\n\nExit codes: 1 read error, 2 usage error, 3 parse error";
+    println!("{help_message}");
 }
