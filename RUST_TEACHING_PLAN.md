@@ -75,7 +75,9 @@
 - Rust stable 工具链与 Cargo。
 - `rustfmt`、Clippy 和 Rust Analyzer。
 - Git、支持断点调试的编辑器、HTTP 客户端和基础系统监控工具。
-- 性能阶段按操作系统选择采样分析工具，并固定记录工具与版本。
+- 性能阶段以 Linux 服务端诊断为主线，准备可使用 `perf_event` 的 Linux 主机、虚拟机或远程实验环境；容器只有在明确具备所需权限时才用于采样。
+- Linux 准备 `perf`、cargo-flamegraph，以及 DHAT 或 heaptrack；macOS 准备 Instruments，作为相同诊断概念的本地映射与交叉验证。
+- 固定记录 CPU、操作系统、内核、Rust 工具链、Profiler 版本、构建 profile 和完整 workload，修改前后尽量使用同一环境。
 
 首次课完成环境验收：
 
@@ -319,15 +321,40 @@ AI 在全周期承担完整的教学责任，包括组织对话、讲解、追�
 
 ### 第 14 周：Benchmark 与 Profiling
 
-**周目标**：建立“假设—测量—修改—复测”的性能优化流程。
+**周目标**：以 Linux 服务端为主要环境，建立“定义症状—测量—分类—归因—修改—复测”的性能优化流程；能够把同一诊断模型映射到 macOS Instruments。
 
 | 课次 | 能力切片 | 核心知识 | 验收产物 |
 | --- | --- | --- | --- |
-| 1 | 建立稳定微基准 | 预热、噪声、样本 | 可重复的解析或过滤基准 |
-| 2 | 做端到端基准 | 吞吐、延迟分位数 | 三档数据规模结果 |
-| 3 | 采集 CPU Profile | 热点、调用栈 | 标出前三个热点及占比 |
-| 4 | 检查分配 | 分配次数、缓冲复用 | 一项有证据的分配优化 |
-| 5 | 写性能结论 | 回归、适用边界 | 优化前后数据与副作用 |
+| 1 | 建立稳定基线 | release/bench profile、Criterion、端到端 workload、预热、噪声、样本 | 三档数据规模的耗时、吞吐、方差或置信区间 |
+| 2 | 在 Linux 分类瓶颈 | `perf stat`、wall/CPU time、instructions、cycles、IPC、context switches、page faults | 判断问题优先属于 CPU、分配、等待或 I/O，并写出证据边界 |
+| 3 | 在 Linux 归属 CPU 开销 | `perf record/report`、cargo-flamegraph、采样、调用栈、self 与 inclusive cost | 标出前三个热点、进入路径、占比和一个可证伪假设 |
+| 4 | 检查分配并验证假设 | DHAT 或 heaptrack、分配次数、累计字节、峰值存活量、分配点；必要时用 Cachegrind/Callgrind 检查指令和缓存 | 实施一项有证据的借用、复用或循环外提优化 |
+| 5 | 跨环境复测并写结论 | Linux 复测、macOS Instruments 映射、统计变化、行为回归、适用边界 | 优化前后报告、行为等价证据、跨环境差异与副作用 |
+
+#### 第 14 周诊断路径
+
+性能诊断必须从用户可观察的症状开始，不能先打开火焰图再寻找故事：
+
+```text
+固定 workload 和正确性基线
+  → 测量 wall time、吞吐、延迟与波动
+  → 用 perf stat 区分 CPU、调度/等待、缺页或其他系统因素
+  → CPU 路径用 perf record/report 或 cargo-flamegraph 归属到调用栈
+  → malloc/free、memcpy 或容器扩容显著时检查分配
+  → 为执行次数、分配次数或数据规模建立成本模型
+  → 提出一个可证伪假设，只修改一个主要因素
+  → 微基准、端到端基准和行为测试共同复测
+```
+
+指标解释要求：
+
+- wall time 代表用户等待时间；CPU time 和 CPU 利用率用于判断程序是在计算还是等待，二者不能互相替代。
+- `instructions`、`cycles` 和 IPC 用于比较执行工作量与 CPU 效率；cache miss、branch miss 只作为进一步调查线索，不能单独构成根因。
+- CPU Profile 同时查看函数自身消耗和包含子调用的总消耗，并沿调用栈确认热点由哪条业务路径触发。
+- 分配诊断同时查看分配次数、累计分配字节、峰值存活字节和分配调用点；峰值内存低不代表分配开销低。
+- wall time 很高而 CPU 不忙时，应检查阻塞、锁、调度和系统调用等待，不能继续做无证据的 CPU 微优化。
+
+Linux 为本周主要验收环境。macOS 使用 Instruments Time Profiler 和 Allocations 复现 self/total cost、调用栈与分配点等相同概念，但不能代替 Linux 上的 `perf` 诊断证据。采样 release 构建时保留行号级调试信息；调用栈缺失时再验证 frame pointer、符号和内核 `perf_event` 权限，不以永久放宽系统安全策略作为课程默认方案。
 
 ### 第 15 周：工程化与发布准备
 
