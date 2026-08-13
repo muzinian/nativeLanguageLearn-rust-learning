@@ -2,7 +2,7 @@
 构建运行调试项目需要提前安装 `Rust` 和 `Cargo`。
 获取代码后，在项目根目录执行`cd loglens`进入`loglens`目录，运行
 ```bash
-cargo run -- <日志文件路径> <过滤关键字> [--ignore-case]
+cargo run -- <日志文件路径> <过滤关键字> [--config <配置文件路径>] [--ignore-case]
 ```
 得到结果。
 
@@ -12,7 +12,7 @@ cargo run -- --help
 ```
 预期输出：
 ```text
-Usage: loglens <LOG_FILE> <KEYWORD> [--ignore-case]
+Usage: loglens <LOG_FILE> <KEYWORD> [--config <CONFIG_FILE>] [--ignore-case]
 
 Log format: LEVEL message
 LEVEL: INFO, WARN, or ERROR
@@ -33,6 +33,7 @@ WARN timeout
 cargo run -- fixtures/filter.log retry
 cargo run -- fixtures/filter.log RETRY --ignore-case
 cargo run -- fixtures/unicode.log 登录
+cargo run -- fixtures/filter.log retry --config fixtures/config-ignore-case-false.conf
 ```
 
 错误码：

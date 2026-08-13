@@ -1,6 +1,8 @@
+mod config;
 mod matcher;
 mod model;
 mod parser;
+use crate::config::{ConfigError, resolve_ignore_case};
 use crate::matcher::line_matches;
 use crate::model::LogLevel;
 use crate::parser::parse_log_line;
@@ -67,18 +69,47 @@ fn run() -> Result<(), AppError> {
     let keyword = args.next().ok_or_else(|| AppError::Usage {
         message: "pls input filter".to_string(),
     })?;
-    let ignore_case = match args.next() {
-        Some(flag) => {
-            if flag == "--ignore-case" {
-                true
-            } else {
+
+    let mut cli_ignore_case = None;
+    let mut file_ignore_case = None;
+    while let Some(flag) = args.next() {
+        match flag.as_str() {
+            "--ignore-case" => cli_ignore_case = Some(true),
+            "--config" => {
+                let config_path = args.next();
+                match config_path {
+                    Some(config_path) => match config::load_file_ignore_case(&config_path) {
+                        Ok(value) => {
+                            file_ignore_case = Some(value);
+                        }
+                        Err(source) => match source {
+                            ConfigError::InvalidContent { content } => {
+                                return Result::Err(AppError::Usage { message: content });
+                            }
+                            ConfigError::ConfigFileReadError { path, error } => {
+                                return Result::Err(AppError::ReadFile {
+                                    path,
+                                    source: error,
+                                });
+                            }
+                        },
+                    },
+                    None => {
+                        return Result::Err(AppError::Usage {
+                            message: "pls input config file path".to_string(),
+                        });
+                    }
+                }
+            }
+            _ => {
                 return Result::Err(AppError::Usage {
                     message: format!("unknown flag: {flag}"),
                 });
             }
         }
-        None => false,
-    };
+    }
+
+    let ignore_case = resolve_ignore_case(false, file_ignore_case, cli_ignore_case);
 
     let file = File::open(&path).map_err(|source| AppError::ReadFile {
         path: path.clone(),
@@ -122,6 +153,6 @@ fn run() -> Result<(), AppError> {
 }
 
 fn print_help() {
-    let help_message = "Usage: loglens <LOG_FILE> <KEYWORD> [--ignore-case]\n\nLog format: LEVEL message\nLEVEL: INFO, WARN, or ERROR\n\nExit codes: 1 read error, 2 usage error, 3 parse error";
+    let help_message = "Usage: loglens <LOG_FILE> <KEYWORD> [--config <CONFIG_FILE>] [--ignore-case]\n\nLog format: LEVEL message\nLEVEL: INFO, WARN, or ERROR\n\nExit codes: 1 read error, 2 usage error, 3 parse error";
     println!("{help_message}");
 }
