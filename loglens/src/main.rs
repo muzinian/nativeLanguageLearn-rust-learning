@@ -3,9 +3,9 @@ mod matcher;
 mod model;
 mod parser;
 use crate::config::{ConfigError, resolve_ignore_case};
-use crate::matcher::line_matches;
+use crate::matcher::{AndFilter, Filter, KeywordFilter, LogLevelFilter};
 use crate::model::LogLevel;
-use crate::parser::parse_log_line;
+use crate::parser::{parse_log_level, parse_log_line};
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 
@@ -72,6 +72,7 @@ fn run() -> Result<(), AppError> {
 
     let mut cli_ignore_case = None;
     let mut file_ignore_case = None;
+    let mut log_level_filter = None;
     while let Some(flag) = args.next() {
         match flag.as_str() {
             "--ignore-case" => cli_ignore_case = Some(true),
@@ -101,6 +102,29 @@ fn run() -> Result<(), AppError> {
                     }
                 }
             }
+            "--level" => {
+                let level = args.next();
+                match level {
+                    Some(level) => {
+                        let log_level = parse_log_level(&level);
+                        match log_level {
+                            Some(value) => {
+                                log_level_filter = Some(LogLevelFilter::new(value));
+                            }
+                            None => {
+                                return Result::Err(AppError::Usage {
+                                    message: "unknown level ".to_string() + &level,
+                                });
+                            }
+                        }
+                    }
+                    None => {
+                        return Result::Err(AppError::Usage {
+                            message: "pls input level".to_string(),
+                        });
+                    }
+                }
+            }
             _ => {
                 return Result::Err(AppError::Usage {
                     message: format!("unknown flag: {flag}"),
@@ -110,9 +134,24 @@ fn run() -> Result<(), AppError> {
     }
 
     let ignore_case = resolve_ignore_case(false, file_ignore_case, cli_ignore_case);
+    let keyword_filter = KeywordFilter::new(keyword, ignore_case);
+    match log_level_filter {
+        Some(log_level_filter) => {
+            let and_filter = AndFilter::new(keyword_filter, log_level_filter);
+            scan_log(&path, &and_filter)
+        }
+        None => scan_log(&path, &keyword_filter),
+    }
+}
 
-    let file = File::open(&path).map_err(|source| AppError::ReadFile {
-        path: path.clone(),
+fn print_help() {
+    let help_message = "Usage: loglens <LOG_FILE> <KEYWORD> [--config <CONFIG_FILE>] [--ignore-case] [--level <LOG_LEVEL>]\n\nLog format: LEVEL message\nLEVEL: INFO, WARN, or ERROR\n\nExit codes: 1 read error, 2 usage error, 3 parse error";
+    println!("{help_message}");
+}
+
+fn scan_log(path: &str, filter: &dyn Filter) -> Result<(), AppError> {
+    let file = File::open(path).map_err(|source| AppError::ReadFile {
+        path: path.to_string(),
         source,
     })?;
     let reader = BufReader::new(file);
@@ -123,13 +162,13 @@ fn run() -> Result<(), AppError> {
 
     for (index, line) in reader.lines().enumerate() {
         let line = line.map_err(|source| AppError::ReadFile {
-            path: path.clone(),
+            path: path.to_string(),
             source,
         })?;
         match parse_log_line(&line) {
             //改写为 cargo clippy 推荐方式，但是注意此时要注意，增加下面的 Some(_)
-            //这里 Some 和 if 组成一起，所以，如果匹配到了 Some(record)，但是 if 报错，说明是一个没有匹配上的 Some 逻辑，因此要有一个 Some(_) 承接这个分支，或者给 None 改成 _ 。
-            Some(record) if line_matches(&line, &keyword, ignore_case) => {
+            //这里 Some 和 if 组成一起，所以，如果匹配到了 Some(record)，但是 ide 对于 if 这边提示有未匹配上的 arm，说明是一个没有匹配上的 Some 逻辑，因此要有一个 Some(_) 承接这个分支，或者给 None 改成 _ 。
+            Some(record) if filter.matches(&line, &record) => {
                 matched_count += 1;
                 match record.level {
                     LogLevel::Info => info_count += 1,
@@ -150,9 +189,4 @@ fn run() -> Result<(), AppError> {
     println!("matched: {matched_count}");
     println!("INFO: {info_count},WARN: {warn_count},ERROR: {error_count}");
     Ok(())
-}
-
-fn print_help() {
-    let help_message = "Usage: loglens <LOG_FILE> <KEYWORD> [--config <CONFIG_FILE>] [--ignore-case]\n\nLog format: LEVEL message\nLEVEL: INFO, WARN, or ERROR\n\nExit codes: 1 read error, 2 usage error, 3 parse error";
-    println!("{help_message}");
 }

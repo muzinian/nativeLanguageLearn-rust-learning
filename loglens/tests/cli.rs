@@ -70,7 +70,7 @@ fn displays_help() {
         .expect("loglens process should start");
     assert!(output.status.success());
     assert!(output.stderr.is_empty());
-    assert_eq!(output.stdout,b"Usage: loglens <LOG_FILE> <KEYWORD> [--config <CONFIG_FILE>] [--ignore-case]\n\nLog format: LEVEL message\nLEVEL: INFO, WARN, or ERROR\n\nExit codes: 1 read error, 2 usage error, 3 parse error\n");
+    assert_eq!(output.stdout,b"Usage: loglens <LOG_FILE> <KEYWORD> [--config <CONFIG_FILE>] [--ignore-case] [--level <LOG_LEVEL>]\n\nLog format: LEVEL message\nLEVEL: INFO, WARN, or ERROR\n\nExit codes: 1 read error, 2 usage error, 3 parse error\n");
 }
 
 #[test]
@@ -221,4 +221,45 @@ fn conf_before_cli_test() {
         b"INFO retry request\nERROR retry failed\nmatched: 2\nINFO: 1,WARN: 0,ERROR: 1\n"
     );
     assert!(output.stderr.is_empty());
+}
+
+#[test]
+fn correct_level_param() {
+    let output = Command::new(env!("CARGO_BIN_EXE_loglens"))
+        .current_dir(env!("CARGO_MANIFEST_DIR"))
+        .args(["fixtures/filter.log", "retry", "--level", "INFO"])
+        .output()
+        .expect("loglens process should start");
+
+    assert!(output.status.success());
+    assert_eq!(
+        output.stdout,
+        b"INFO retry request\nmatched: 1\nINFO: 1,WARN: 0,ERROR: 0\n"
+    );
+    assert!(output.stderr.is_empty());
+}
+#[test]
+fn no_level_param() {
+    let output = Command::new(env!("CARGO_BIN_EXE_loglens"))
+        .current_dir(env!("CARGO_MANIFEST_DIR"))
+        .args(["fixtures/filter.log", "retry", "--level"])
+        .output()
+        .expect("loglens process should start");
+
+    assert_eq!(output.status.code(), Some(2));
+    assert!(output.stdout.is_empty());
+    assert_eq!(output.stderr, b"pls input level\n");
+}
+
+#[test]
+fn unknown_level_param() {
+    let output = Command::new(env!("CARGO_BIN_EXE_loglens"))
+        .current_dir(env!("CARGO_MANIFEST_DIR"))
+        .args(["fixtures/filter.log", "retry", "--level", "DEBUG"])
+        .output()
+        .expect("loglens process should start");
+
+    assert_eq!(output.status.code(), Some(2));
+    assert!(output.stdout.is_empty());
+    assert_eq!(output.stderr, b"unknown level DEBUG\n");
 }

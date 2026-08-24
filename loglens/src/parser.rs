@@ -1,6 +1,6 @@
 use crate::model::{LogLevel, LogRecord};
 
-fn parse_level(word: &str) -> Option<LogLevel> {
+pub(crate) fn parse_log_level(word: &str) -> Option<LogLevel> {
     match word {
         "INFO" => Some(LogLevel::Info),
         "WARN" => Some(LogLevel::Warn),
@@ -21,7 +21,7 @@ pub(crate) fn parse_log_line(line: &str) -> Option<LogRecord> {
                 return None;
             }
             //map 做法，|level|是闭包，如果字段名和变量名相同，可以直接使用字段名
-            parse_level(level).map(|level| LogRecord {
+            parse_log_level(level).map(|level| LogRecord {
                 level,
                 message: message.to_string(),
             })
@@ -32,16 +32,16 @@ pub(crate) fn parse_log_line(line: &str) -> Option<LogRecord> {
 
 #[cfg(test)]
 mod test {
-    use super::{parse_level, parse_log_line, split_log_line};
+    use super::{parse_log_level, parse_log_line, split_log_line};
     use crate::model::{LogLevel, LogRecord};
     #[test]
     fn parses_info_level() {
-        assert!(matches!(parse_level("INFO"), Some(LogLevel::Info)));
+        assert!(matches!(parse_log_level("INFO"), Some(LogLevel::Info)));
     }
 
     #[test]
     fn parses_unknown_level() {
-        assert!(matches!(parse_level("TRACE"), None));
+        assert!(matches!(parse_log_level("TRACE"), None));
     }
 
     #[test]
