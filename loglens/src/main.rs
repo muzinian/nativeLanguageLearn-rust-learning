@@ -149,7 +149,7 @@ fn print_help() {
     println!("{help_message}");
 }
 
-fn scan_log(path: &str, filter: &dyn Filter) -> Result<(), AppError> {
+fn scan_log(path: &str, filter: &impl Filter) -> Result<(), AppError> {
     let file = File::open(path).map_err(|source| AppError::ReadFile {
         path: path.to_string(),
         source,

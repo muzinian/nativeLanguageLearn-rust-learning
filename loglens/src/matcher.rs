@@ -13,8 +13,9 @@ pub(crate) struct AndFilter<Left, Right> {
     left: Left,
     right: Right,
 }
-
-pub(crate) struct OrFilter<Left, Right> {
+// OR 组合已通过单元测试，当前 CLI 尚未提供 OR 组合语义。
+#[allow(dead_code)]
+struct OrFilter<Left, Right> {
     left: Left,
     right: Right,
 }
@@ -62,14 +63,15 @@ impl LogLevelFilter {
     }
 }
 
-impl<Left, Right> AndFilter<Left, Right> {
+impl<Left: Filter, Right: Filter> AndFilter<Left, Right> {
     pub(crate) fn new(left: Left, right: Right) -> Self {
         Self { left, right }
     }
 }
 
-impl<Left, Right> OrFilter<Left, Right> {
-    pub(crate) fn new(left: Left, right: Right) -> Self {
+impl<Left: Filter, Right: Filter> OrFilter<Left, Right> {
+    #[allow(dead_code)]
+    fn new(left: Left, right: Right) -> Self {
         Self { left, right }
     }
 }
