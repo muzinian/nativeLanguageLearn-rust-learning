@@ -1,5 +1,3 @@
-use std::str::FromStr;
-
 use crate::model::{LogLevel, LogRecord};
 
 pub(crate) fn parse_log_level(word: &str) -> Option<LogLevel> {
@@ -15,28 +13,16 @@ fn split_log_line(line: &str) -> Option<(&str, &str)> {
     line.split_once(' ')
 }
 
-fn extract_car_cdr<'a, T: FromStr>(pair: Option<(&str, &'a str)>) -> Option<(T, &'a str)> {
-    match pair {
-        Some((first, left)) => {
-            let first: T = first.parse().ok()?;
-            Some((first, left))
-        }
-        None => None,
-    }
-}
-
 pub(crate) fn parse_log_line(line: &str) -> Option<LogRecord> {
     let split_result = split_log_line(line);
-    let time_other: Option<(u64, &str)> = extract_car_cdr(split_result);
-    let level_message;
-    let time: Option<u64>;
-    if let Some((real_time, other)) = time_other {
-        time = Some(real_time);
-        level_message = split_log_line(other);
+    let (unix_time_seconds, level_message) = if let Some((first, remainder)) = split_result {
+        match first.parse::<u64>().ok() {
+            Some(timestamp) => (Some(timestamp), split_log_line(remainder)),
+            None => (None, split_result),
+        }
     } else {
-        time = None;
-        level_message = split_log_line(line);
-    }
+        return None;
+    };
 
     match level_message {
         //解析日志包括两个格式 timestamp level message 和 level message，这里要对两个格式做兼容
@@ -50,7 +36,7 @@ pub(crate) fn parse_log_line(line: &str) -> Option<LogRecord> {
             }
             //map 做法，|level|是闭包，如果字段名和变量名相同，可以直接使用字段名
             parse_log_level(level).map(|level| LogRecord {
-                timestamp_seconds: time,
+                unix_timestamp_seconds: unix_time_seconds,
                 level,
                 message: message.to_string(),
             })
@@ -91,7 +77,7 @@ mod test {
         assert_eq!(
             parse_log_line("INFO retry request"),
             Some(LogRecord {
-                timestamp_seconds: None,
+                unix_timestamp_seconds: None,
                 level: LogLevel::Info,
                 message: String::from("retry request")
             })
@@ -118,7 +104,7 @@ mod test {
         assert_eq!(
             parse_log_line("1700000000 INFO retry request"),
             Some(LogRecord {
-                timestamp_seconds: Some(1700000000),
+                unix_timestamp_seconds: Some(1700000000),
                 level: LogLevel::Info,
                 message: String::from("retry request")
             })
@@ -133,5 +119,25 @@ mod test {
     #[test]
     fn debug_level() {
         assert_eq!(parse_log_line("1700000000 DEBUG cache warmed"), None)
+    }
+
+    #[test]
+    fn timestamp_level_blank() {
+        assert_eq!(parse_log_line("1700000000 INFO "), None)
+    }
+
+    #[test]
+    fn level_blank() {
+        assert_eq!(parse_log_line("INFO "), None)
+    }
+
+    #[test]
+    fn timestamp_level_blank_message() {
+        assert_eq!(parse_log_line("1700000000 INFO  retry request"), None)
+    }
+
+    #[test]
+    fn timestamp_blank_level_message() {
+        assert_eq!(parse_log_line("1700000000  INFO retry request"), None)
     }
 }
