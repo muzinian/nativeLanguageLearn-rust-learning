@@ -123,6 +123,7 @@ mod tests {
         assert!(keyword_filter.matches(
             "INFO retry request",
             &LogRecord {
+                timestamp_seconds: None,
                 level: LogLevel::Info,
                 message: "retry request".to_string()
             }
@@ -135,6 +136,7 @@ mod tests {
         assert!(keyword_filter.matches(
             "INFO retry request",
             &LogRecord {
+                timestamp_seconds: None,
                 level: LogLevel::Info,
                 message: "retry request".to_string(),
             }
@@ -147,6 +149,7 @@ mod tests {
         assert!(log_level_filter.matches(
             "INFO retry request",
             &LogRecord {
+                timestamp_seconds: None,
                 level: LogLevel::Info,
                 message: "retry request".to_string(),
             }
@@ -159,6 +162,7 @@ mod tests {
         assert!(!log_level_filter.matches(
             "INFO retry request",
             &LogRecord {
+                timestamp_seconds: None,
                 level: LogLevel::Info,
                 message: "retry request".to_string(),
             }
@@ -173,6 +177,7 @@ mod tests {
         assert!(and_filter.matches(
             "INFO retry request",
             &LogRecord {
+                timestamp_seconds: None,
                 level: LogLevel::Info,
                 message: "retry request".to_string()
             }
@@ -187,6 +192,7 @@ mod tests {
         assert!(!and_filter.matches(
             "WARN retry request",
             &LogRecord {
+                timestamp_seconds: None,
                 level: LogLevel::Warn,
                 message: "retry request".to_string()
             }
@@ -201,6 +207,7 @@ mod tests {
         assert!(!and_filter.matches(
             "INFO timeout",
             &LogRecord {
+                timestamp_seconds: None,
                 level: LogLevel::Info,
                 message: "timeout".to_string()
             }
@@ -215,6 +222,7 @@ mod tests {
         assert!(!and_filter.matches(
             "WARN timeout",
             &LogRecord {
+                timestamp_seconds: None,
                 level: LogLevel::Warn,
                 message: "timeout".to_string()
             }
@@ -229,6 +237,7 @@ mod tests {
         assert!(or_filter.matches(
             "INFO retry request",
             &LogRecord {
+                timestamp_seconds: None,
                 level: LogLevel::Info,
                 message: "retry request".to_string()
             }
@@ -243,6 +252,7 @@ mod tests {
         assert!(or_filter.matches(
             "WARN retry request",
             &LogRecord {
+                timestamp_seconds: None,
                 level: LogLevel::Warn,
                 message: "retry request".to_string()
             }
@@ -257,6 +267,7 @@ mod tests {
         assert!(or_filter.matches(
             "INFO timeout",
             &LogRecord {
+                timestamp_seconds: None,
                 level: LogLevel::Info,
                 message: "timeout".to_string()
             }
@@ -271,6 +282,7 @@ mod tests {
         assert!(!or_filter.matches(
             "WARN timeout",
             &LogRecord {
+                timestamp_seconds: None,
                 level: LogLevel::Warn,
                 message: "timeout".to_string()
             }
