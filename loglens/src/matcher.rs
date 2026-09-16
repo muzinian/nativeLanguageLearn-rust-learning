@@ -24,6 +24,11 @@ pub(crate) struct LogLevelFilter {
     level: LogLevel,
 }
 
+pub(crate) struct TimeRangeFilter {
+    start_unix_seconds: u64,
+    end_unix_seconds: u64,
+}
+
 impl Filter for KeywordFilter {
     fn matches(&self, line: &str, _record: &LogRecord) -> bool {
         line_matches(line, &self.keyword, self.ignore_case)
@@ -76,6 +81,30 @@ impl<Left: Filter, Right: Filter> OrFilter<Left, Right> {
     }
 }
 
+impl TimeRangeFilter {
+    pub(crate) fn new(start_unix_seconds: u64, end_unix_seconds: u64) -> Option<Self> {
+        if start_unix_seconds > end_unix_seconds {
+            None
+        } else {
+            Some(Self {
+                start_unix_seconds,
+                end_unix_seconds,
+            })
+        }
+    }
+}
+
+impl Filter for TimeRangeFilter {
+    fn matches(&self, _line: &str, record: &LogRecord) -> bool {
+        match record.unix_timestamp_seconds {
+            Some(time_second) => {
+                time_second >= self.start_unix_seconds && time_second <= self.end_unix_seconds
+            }
+            None => false,
+        }
+    }
+}
+
 fn line_matches(line: &str, keyword: &str, ignore_case: bool) -> bool {
     let keyword_for_match = keyword.to_lowercase();
     if ignore_case {
@@ -88,7 +117,7 @@ fn line_matches(line: &str, keyword: &str, ignore_case: bool) -> bool {
 #[cfg(test)]
 mod tests {
     use crate::{
-        matcher::{AndFilter, Filter, KeywordFilter, LogLevelFilter, OrFilter},
+        matcher::{AndFilter, Filter, KeywordFilter, LogLevelFilter, OrFilter, TimeRangeFilter},
         model::{LogLevel, LogRecord},
     };
 
@@ -285,6 +314,119 @@ mod tests {
                 unix_timestamp_seconds: None,
                 level: LogLevel::Warn,
                 message: "timeout".to_string()
+            }
+        ));
+    }
+    #[test]
+    fn new_time_range_start_lt_end() {
+        let start_end_filter = TimeRangeFilter::new(100, 200);
+        assert!(matches!(
+            start_end_filter,
+            Some(TimeRangeFilter {
+                start_unix_seconds: 100,
+                end_unix_seconds: 200
+            })
+        ));
+    }
+    #[test]
+    fn new_time_range_start_eq_end() {
+        let start_end_filter = TimeRangeFilter::new(100, 100);
+
+        assert!(matches!(
+            start_end_filter,
+            Some(TimeRangeFilter {
+                start_unix_seconds: 100,
+                end_unix_seconds: 100
+            })
+        ));
+    }
+    #[test]
+    fn new_time_range_start_gt_end() {
+        let start_end_filter = TimeRangeFilter::new(200, 100);
+
+        assert!(matches!(start_end_filter, None));
+    }
+    #[test]
+    fn range_filter_no_time() {
+        let start_end_filter =
+            TimeRangeFilter::new(100, 200).expect("100 到 200 应该是合法的时间范围");
+
+        assert!(!start_end_filter.matches(
+            "",
+            &LogRecord {
+                unix_timestamp_seconds: None,
+                level: LogLevel::Info,
+                message: "retry request".to_string()
+            }
+        ));
+    }
+    #[test]
+    fn range_filter_lt_begin() {
+        let start_end_filter =
+            TimeRangeFilter::new(100, 200).expect("100 到 200 应该是合法的时间范围");
+
+        assert!(!start_end_filter.matches(
+            "",
+            &LogRecord {
+                unix_timestamp_seconds: Some(90),
+                level: LogLevel::Info,
+                message: "retry request".to_string()
+            }
+        ));
+    }
+    #[test]
+    fn range_filter_eq_begin() {
+        let start_end_filter =
+            TimeRangeFilter::new(100, 200).expect("100 到 200 应该是合法的时间范围");
+
+        assert!(start_end_filter.matches(
+            "",
+            &LogRecord {
+                unix_timestamp_seconds: Some(100),
+                level: LogLevel::Info,
+                message: "retry request".to_string()
+            }
+        ));
+    }
+    #[test]
+    fn range_filter_in_begin_end() {
+        let start_end_filter =
+            TimeRangeFilter::new(100, 200).expect("100 到 200 应该是合法的时间范围");
+        assert!(start_end_filter.matches(
+            "",
+            &LogRecord {
+                unix_timestamp_seconds: Some(150),
+                level: LogLevel::Info,
+                message: "retry request".to_string()
+            }
+        ));
+    }
+    #[test]
+    fn range_filter_eq_end() {
+        let start_end_filter =
+            TimeRangeFilter::new(100, 200).expect("100 到 200 应该是合法的时间范围");
+
+        assert!(start_end_filter.matches(
+            "",
+            &LogRecord {
+                unix_timestamp_seconds: Some(200),
+                level: LogLevel::Info,
+                message: "retry request".to_string()
+            }
+        ));
+    }
+
+    #[test]
+    fn range_filter_gt_end() {
+        let start_end_filter =
+            TimeRangeFilter::new(100, 200).expect("100 到 200 应该是合法的时间范围");
+
+        assert!(!start_end_filter.matches(
+            "",
+            &LogRecord {
+                unix_timestamp_seconds: Some(220),
+                level: LogLevel::Info,
+                message: "retry request".to_string()
             }
         ));
     }

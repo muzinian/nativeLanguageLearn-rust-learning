@@ -1,0 +1,6 @@
+90 INFO retry before range
+100 INFO retry range start
+150 WARN retry in range
+200 ERROR retry range end
+220 INFO retry after range
+INFO retry without timestamp
