@@ -95,6 +95,22 @@ match error {
 
 `Option<T>` 和 `Result<T, E>` 也是标准库定义的枚举。
 
+### 3.1 变体的三种形状
+
+```rust
+enum ExampleError {
+    Missing,                         // 单元变体：没有字段
+    InvalidValue(String),            // 元组式变体：一个未命名字段
+    OutOfRange { value: i64 },        // 结构体式变体：一个命名字段
+}
+```
+
+构造分别使用 `ExampleError::Missing`、`ExampleError::InvalidValue(String::from("abc"))`、`ExampleError::OutOfRange { value: -5 }`。匹配时分别使用 `ExampleError::Missing`、`ExampleError::InvalidValue(text)`、`ExampleError::OutOfRange { value }`，后两者把携带的数据绑定到变量。
+
+在 `enum Result<T, E> { Ok(T), Err(E) }` 定义中，括号声明变体的未命名字段，T/E 是字段类型，不是函数实参。表达式 `Err(TimestampError::BeforeUnixEpoch)` 构造外层 Result::Err，里面装一个 TimestampError 值；内层 BeforeUnixEpoch 没有字段，但它本身就是有意义的错误类别。不能因为内部没有字段就省略外层 Err 的数据。
+
+注意 `Variant()` 是零字段的元组式变体，并非与单元变体 `Variant` 完全相同的语法形状；Result 的定义是 `Ok(T)`、`Err(E)`，不是空括号。
+
 ## 4. `impl` 实现块
 
 固有实现块为类型定义自己的方法和关联函数：

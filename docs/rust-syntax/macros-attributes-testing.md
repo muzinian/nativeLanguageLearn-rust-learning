@@ -129,17 +129,7 @@ Cargo 以测试模式调用 `rustc`：
 2. `#[test]` 函数被 Rust 测试工具收集；
 3. 生成测试可执行文件并运行。
 
-根目录 `tests/*.rs` 是集成测试 target，每个文件单独编译。常用选择命令：
-
-```bash
-cargo test                 # 全部测试
-cargo test matcher         # 按名称过滤
-cargo test --bin loglens   # 二进制 target 的单元测试
-cargo test --test cli      # tests/cli.rs 集成测试
-cargo test --lib           # 库 target 的单元测试（存在 lib 时）
-```
-
-`--bin`、`--test`、`--lib` 是 Cargo 的 target 选择参数；传给测试程序本身的参数放在额外的 `--` 后。
+包目录 `tests/*.rs` 是集成测试 target，每个文件单独编译。运行命令、目标选择、名称过滤以及测试环境的说明集中维护在 [Rust 构建系统教案第 6 节](cargo-build-system.md#6-测试先选目标再选测试名称)。本页只维护宏与属性的语法规则。
 
 ## 8. `env!` 与子进程测试
 

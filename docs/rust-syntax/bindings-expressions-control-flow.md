@@ -202,7 +202,30 @@ while let Some(flag) = args.next() {
 | `match` 报 non-exhaustive | 没有覆盖目标类型的所有可能值 |
 | 在循环后使用循环变量 | 循环变量只属于循环体作用域 |
 
-## 8. 官方资料
+## 8. 带标签代码块：提前产生块的值
+
+普通 `if` 分支不能用 `return` 表示“只结束这个分支并给外层变量赋值”，因为 `return` 会离开当前函数。若需要结束指定代码块并产生值，可使用带标签的块：
+
+```rust
+let use_default = true;
+let value = 'choose: {
+    if use_default {
+        break 'choose 10;
+    }
+    20
+};
+assert_eq!(value, 10);
+```
+
+`'choose:` 定义控制流标签，不是生命周期声明。`break 'choose 10` 结束该块，让该块的结果为 `10`；之后继续执行整个 `let` 后面的代码。普通无标签块不能这样使用 `break`。带标签块不是重复执行的循环，不能对其使用 `continue`。
+
+各个携带值的 `break` 与正常完成路径的块尾值需要类型兼容。退出块时，其局部变量按作用域规则清理；引用仍须满足生命周期要求。`?` 不会改为退出这个标签块，失败仍传播到相应函数或闭包等返回边界。
+
+LogLens 中可用于非时间首字段提前产生 `(None, Some((first, remainder)))`，而不退出 `parse_log_line`。它是可选表达方式；简单的 `if/else`、通过 `let ... else` 去掉外层失败嵌套、或提取辅助函数也可能更易读。
+
+## 9. 官方资料
+
+- [Rust Reference：Labeled block expressions](https://doc.rust-lang.org/reference/expressions/loop-expr.html#labelled-block-expressions)
 
 - [Rust Reference：Statements](https://doc.rust-lang.org/reference/statements.html)
 - [Rust Reference：Expressions](https://doc.rust-lang.org/reference/expressions.html)

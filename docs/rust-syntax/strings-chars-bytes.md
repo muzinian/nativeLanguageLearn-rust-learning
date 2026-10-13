@@ -164,7 +164,59 @@ let message = format!("unknown level {level}");
 | 返回 `to_string().as_str()` 报生命周期错误 | 返回值借用了即将销毁的临时 `String` |
 | 把 stdout 当 `String` 使用 | 子进程输出是 `Vec<u8>`，字节不保证是有效 UTF-8 |
 
-## 10. 官方资料
+## 10. 遍历字符与判断 ASCII 数字
+
+```rust
+for ch in text.chars() {
+    println!("{ch}: {}", ch.is_ascii_digit());
+}
+```
+
+`text.chars()` 返回逐个产生 `char` 的迭代器，`for` 每轮将一个字符绑定给 `ch`。它借用文本，不创建字符集合，也不转移原字符串的所有权。`ch` 只在循环体内可用。`char` 表示 Unicode 标量值，不保证对应一个完整的视觉字符。
+
+`ch.is_ascii_digit()` 返回 `bool`，只接受 `'0'` 到 `'9'`；全角数字 `'５'`、正负号及空白均返回 `false`。字符串不能直接作为 `for` 的迭代对象，按字符处理时显式调用 `.chars()`。
+
+LogLens 可据此区分“全部为 ASCII 数字的 Unix 秒候选”和其他首字段。字符检查不验证数值范围：很长的纯数字文本仍需通过整数解析检查溢出。若业务定义要求至少一个数字，应单独拒绝空字符串；空字符串的循环体不会执行。
+
+## 11. 字符串 `Pattern` 不等于正则表达式
+
+`str::starts_with` 接受实现 `Pattern` trait 的参数。不同参数类型提供不同匹配行为；传入 `&str` 时按字面文本匹配，不会将其中的 `|`、`[]` 解释成正则语法。
+
+```rust
+assert!(!"+111".starts_with("+|-|[0-9]"));
+assert!("+|-|[0-9]rest".starts_with("+|-|[0-9]"));
+assert!("+111".starts_with('+'));
+assert!("-111".starts_with(['+', '-']));
+```
+
+`['+', '-']` 是字符数组，在这里表示匹配其中任意一个字符，不是顺序匹配两个字符。也可以传入接受 `char`、返回 `bool` 的闭包，描述一个字符的匹配条件。
+
+应区分三种“模式”：`match` 分支的语言模式（例如 `Some(value)`）、字符串搜索的 `Pattern` trait，以及正则表达式语法。它们不是同一种机制。
+
+### 11.1 为什么能传闭包
+
+`starts_with<P: Pattern>` 无需单独重载一个闭包版本：标准库已经为满足以下约束的类型提供泛型实现（这里仅展示实现头部）：
+
+```rust,ignore
+impl<F> Pattern for F
+where
+    F: FnMut(char) -> bool,
+{
+    // 标准库的实现内容省略
+}
+```
+
+`F` 是类型参数。`FnMut(char) -> bool` 表示可以接收一个 `char`、返回 `bool`，并允许修改捕获状态的可调用类型；不修改捕获状态的普通判定闭包也能满足这个约束。编译器为闭包生成独有类型和相应调用能力，标准库的上述实现使满足约束的闭包类型实现 `Pattern`。这不是把闭包隐式转换成某个叫 Pattern 的对象，也不是自动生成正则表达式。
+
+Rust 语言和标准库没有内置通用正则引擎或正则字面量；需要正则时通常使用第三方 `regex` crate。调用标准库已有的 `starts_with` 闭包支持是稳定用法；`Pattern` trait 本身的直接使用或自定义实现仍属于不稳定 API，不要为当前练习开启 nightly。
+
+## 12. 官方资料
+
+- [Rust 标准库：`str::starts_with`](https://doc.rust-lang.org/std/primitive.str.html#method.starts_with)
+- [Rust 标准库：`Pattern`](https://doc.rust-lang.org/std/str/pattern/trait.Pattern.html)
+
+- [Rust 标准库：`str::chars`](https://doc.rust-lang.org/std/primitive.str.html#method.chars)
+- [Rust 标准库：`char::is_ascii_digit`](https://doc.rust-lang.org/std/primitive.char.html#method.is_ascii_digit)
 
 - [Rust 标准库：`String`](https://doc.rust-lang.org/std/string/struct.String.html)
 - [Rust 标准库：`str`](https://doc.rust-lang.org/std/primitive.str.html)

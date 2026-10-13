@@ -44,11 +44,13 @@ filter.matches_keyword(line);
 | `&self` | 只读借用当前实例 |
 | `&mut self` | 可变借用当前实例 |
 
-`self` 只能在具有接收者的方法参数位置使用，不是类似 Java `this` 的任意表达式关键字；方法体中通过它访问当前实例。
+作为参数的 `self` 是方法接收者，位于第一个参数位置；方法体中通过它访问当前实例。没有接收者的关联函数中，不存在可供访问实例的 `self`。另有 `self::` 模块路径语法，不要与实例接收者混淆。
+
+这三种常见形式可以展开为 `self: Self`、`self: &Self`、`self: &mut Self`。显式写接收者让调用契约可见：取得值、共享借用，还是独占借用。这是 Rust 的语言设计选择，不是说带隐式 `this` 的语言在技术上不能表达这些区别。
 
 ## 3. 关联函数
 
-定义在 `impl` 中但没有 `self` 参数的是关联函数：
+严格来说，关联函数包括方法；其中带接收者的是方法。教学中为便于区分，通常将没有 `self` 参数的函数单独称作“关联函数”：
 
 ```rust
 impl KeywordFilter {
@@ -90,6 +92,59 @@ trait Factory {
 ```
 
 `Self::associated_function()` 还可用于调用当前类型的关联项。
+
+### 4.1 连起来看：定义、调用和所有权
+
+以下是独立完整示例，不依赖项目中的过滤器定义：
+
+```rust
+struct Counter {
+    value: u64,
+}
+
+impl Counter {
+    fn new(value: u64) -> Self {
+        Self { value }
+    }
+
+    fn value(&self) -> u64 {
+        self.value
+    }
+
+    fn increment(&mut self) {
+        self.value += 1;
+    }
+
+    fn into_value(self) -> u64 {
+        self.value
+    }
+}
+
+fn main() {
+    let mut counter = Counter::new(10);
+    println!("{}", counter.value()); // 10，只读借用
+    counter.increment(); // 可变借用
+    println!("{}", Counter::value(&counter)); // 11，也可以通过类型路径调用方法
+    let value = counter.into_value(); // 移动 Counter
+    println!("{value}"); // 11
+    // counter.value(); // 编译错误：上面已移动 counter
+}
+```
+
+- `impl Counter` 不是“给 impl 起一个与 struct 相同的名字”，而是指定为 `Counter` 类型提供实现。
+- 这里 `Self` 是类型 `Counter`，`self` 是接收者值；二者不是同一个名字的大小写变体。
+- 同一类型允许多个固有 `impl` 块，不要求所有函数放在一个块内。
+- `Counter::new(10)` 没有接收已有实例；`counter.value()` 有接收者。
+- 本例 `Counter` 没有实现 `Copy`，所以按值接收会移动它。若接收者类型实现了 `Copy`，按值调用可以复制接收者。
+- `impl SomeTrait for Counter` 中的 `Self` 同样是 `Counter`，不是 `SomeTrait`。
+
+### 4.2 复习与后续课程位置
+
+这部分已在第 5 周过滤器中使用；在“第 5 周后置专题：Rust 集合与迭代协议”第 4 课实现领域集合前，集中复习，而不是把它当作未讲过的新知识直接考查。
+
+复习目标：能为构造、只读查询、原地修改、消费并取出数据四种操作选择签名，并说明调用后原变量是否可用。
+
+练习：先解释上例每个函数的分类和接收者，再为一个拥有 `String` 的简单结构设计这四种操作。验收包括正确的调用语法、借用方式，以及一次移动后不可再次使用的编译验证。不要仅以“见过术语”判定掌握。
 
 ## 5. 闭包
 

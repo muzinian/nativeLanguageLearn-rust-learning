@@ -114,6 +114,25 @@ let view: &str = &keyword;
 
 `as_str` 的 `as_` 是 API 命名惯例；`as` 才是 Rust 关键字。两者不要混淆。
 
+### 6.1 `TryFrom`：可能失败的值转换
+
+第 5 周后置时间实验首次使用：Chrono 的 Unix 秒为 i64，LogLens 存储类型为 u64，需要明确拒绝负数。
+
+```rust
+let signed_seconds: i64 = 5;
+let converted = u64::try_from(signed_seconds);
+// converted: Result<u64, std::num::TryFromIntError>
+```
+
+`TryFrom` 是标准库 trait；`try_from` 是它提供的关联函数，`u64` 是目标类型，参数类型决定源类型。项目使用 edition 2024，TryFrom 已在 prelude（自动导入的常用项集合）中，不必额外 use。这不是新的强制转换语法。
+
+- 非负 i64 可以转换成 u64，得到 Ok；负数得到 Err。
+- 错误通过 Result 表达，不是自动 panic；可使用 match 处理。
+- `parse` 是从文本解析，`try_from` 在这里是两个整数类型之间的值转换。
+- 不要用 `as u64` 代替范围校验；负整数的这种转换不会报告范围错误。
+
+资料：[标准库 TryFrom](https://doc.rust-lang.org/std/convert/trait.TryFrom.html)。
+
 ## 7. `Pattern` 与 `contains`
 
 `str::contains` 的签名使用泛型模式参数：
