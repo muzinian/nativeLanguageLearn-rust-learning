@@ -2,10 +2,11 @@ mod config;
 mod matcher;
 mod model;
 mod parser;
+mod timestamp;
 use crate::config::{ConfigError, resolve_ignore_case};
-use crate::matcher::{AndFilter, Filter, KeywordFilter, LogLevelFilter};
+use crate::matcher::{AndFilter, Filter, KeywordFilter, LogLevelFilter, TimeRangeFilter};
 use crate::model::LogLevel;
-use crate::parser::{parse_log_level, parse_log_line};
+use crate::parser::{LogParseError, parse_log_level, parse_log_line};
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 
@@ -21,6 +22,7 @@ enum AppError {
     ParseLine {
         line_number: usize,
         content: String,
+        source: LogParseError,
     },
 }
 
@@ -39,8 +41,9 @@ fn main() {
             AppError::ParseLine {
                 line_number,
                 content,
+                source,
             } => {
-                eprintln!("parse line {line_number} failed: {content}");
+                eprintln!("parse line {line_number} failed: {content}; reason: {source:?}");
                 std::process::exit(3);
             }
         },
@@ -73,6 +76,8 @@ fn run() -> Result<(), AppError> {
     let mut cli_ignore_case = None;
     let mut file_ignore_case = None;
     let mut log_level_filter = None;
+    let mut begin_time = None;
+    let mut end_time = None;
     while let Some(flag) = args.next() {
         match flag.as_str() {
             "--ignore-case" => cli_ignore_case = Some(true),
@@ -125,6 +130,12 @@ fn run() -> Result<(), AppError> {
                     }
                 }
             }
+            "--begin" => {
+                begin_time = Some(parse_time(args.next(), "begin")?);
+            }
+            "--end" => {
+                end_time = Some(parse_time(args.next(), "end")?);
+            }
             _ => {
                 return Result::Err(AppError::Usage {
                     message: format!("unknown flag: {flag}"),
@@ -132,20 +143,48 @@ fn run() -> Result<(), AppError> {
             }
         }
     }
+    let time_range_filter =
+        match (begin_time, end_time) {
+            (None, None) => None,
+            (Some(_), None) => {
+                return Result::Err(AppError::Usage {
+                    message: "pls input end time".to_string(),
+                });
+            }
+            (None, Some(_)) => {
+                return Result::Err(AppError::Usage {
+                    message: "pls input begin time".to_string(),
+                });
+            }
+            (Some(begin), Some(end)) => Some(TimeRangeFilter::new(begin, end).ok_or_else(
+                || AppError::Usage {
+                    message: "begin must be less than or equal to end".to_string(),
+                },
+            )?),
+        };
 
     let ignore_case = resolve_ignore_case(false, file_ignore_case, cli_ignore_case);
     let keyword_filter = KeywordFilter::new(keyword, ignore_case);
-    match log_level_filter {
-        Some(log_level_filter) => {
+    match (time_range_filter, log_level_filter) {
+        (None, None) => scan_log(&path, &keyword_filter),
+        (Some(time_range_filter), None) => {
+            let and_filter = AndFilter::new(keyword_filter, time_range_filter);
+            scan_log(&path, &and_filter)
+        }
+        (None, Some(log_level_filter)) => {
             let and_filter = AndFilter::new(keyword_filter, log_level_filter);
             scan_log(&path, &and_filter)
         }
-        None => scan_log(&path, &keyword_filter),
+        (Some(time_range_filter), Some(log_level_filter)) => {
+            let and_filter = AndFilter::new(keyword_filter, log_level_filter);
+            let all_filter = AndFilter::new(and_filter, time_range_filter);
+            scan_log(&path, &all_filter)
+        }
     }
 }
 
 fn print_help() {
-    let help_message = "Usage: loglens <LOG_FILE> <KEYWORD> [--config <CONFIG_FILE>] [--ignore-case] [--level <LOG_LEVEL>]\n\nLog format: LEVEL message\nLEVEL: INFO, WARN, or ERROR\n\nExit codes: 1 read error, 2 usage error, 3 parse error";
+    let help_message = "Usage: loglens <LOG_FILE> <KEYWORD> [--config <CONFIG_FILE>] [--ignore-case] [--level <LOG_LEVEL>] [--begin <UNIX_SECONDS>] [--end <UNIX_SECONDS>]\n\nLog format: LEVEL message/unix_seconds LEVEL message/RFC3339 LEVEL message\nLEVEL: INFO, WARN, or ERROR\n\nExit codes: 1 read error, 2 usage error, 3 parse error";
     println!("{help_message}");
 }
 
@@ -166,9 +205,9 @@ fn scan_log(path: &str, filter: &impl Filter) -> Result<(), AppError> {
             source,
         })?;
         match parse_log_line(&line) {
-            //改写为 cargo clippy 推荐方式，但是注意此时要注意，增加下面的 Some(_)
-            //这里 Some 和 if 组成一起，所以，如果匹配到了 Some(record)，但是 ide 对于 if 这边提示有未匹配上的 arm，说明是一个没有匹配上的 Some 逻辑，因此要有一个 Some(_) 承接这个分支，或者给 None 改成 _ 。
-            Some(record) if filter.matches(&line, &record) => {
+            //改写为 cargo clippy 推荐方式，但是注意此时要注意，增加下面的 Some/Ok(_)
+            //这里 Some/Ok 和 if 组成一起，所以，如果匹配到了 Some/Ok(record)，但是 ide 对于 if 这边提示有未匹配上的 arm，说明是一个没有匹配上的 Some/Ok 逻辑，因此要有一个 Some/Ok(_) 承接这个分支，或者给 None/Err 改成 _ 。
+            Ok(record) if filter.matches(&line, &record) => {
                 matched_count += 1;
                 match record.level {
                     LogLevel::Info => info_count += 1,
@@ -177,11 +216,12 @@ fn scan_log(path: &str, filter: &impl Filter) -> Result<(), AppError> {
                 }
                 println!("{line}")
             }
-            Some(_) => {}
-            None => {
+            Ok(_) => {}
+            Err(source) => {
                 return Result::Err(AppError::ParseLine {
                     line_number: index + 1,
                     content: line,
+                    source,
                 });
             }
         }
@@ -189,4 +229,21 @@ fn scan_log(path: &str, filter: &impl Filter) -> Result<(), AppError> {
     println!("matched: {matched_count}");
     println!("INFO: {info_count},WARN: {warn_count},ERROR: {error_count}");
     Ok(())
+}
+
+fn parse_time(time_str: Option<String>, desc: &str) -> Result<u64, AppError> {
+    match time_str {
+        Some(time_str) => {
+            let parse_result = time_str.parse::<u64>();
+            match parse_result {
+                Ok(result) => Ok(result),
+                Err(_) => Err(AppError::Usage {
+                    message: format!("{desc} is not valid u64 digits,input is {time_str}"),
+                }),
+            }
+        }
+        None => Err(AppError::Usage {
+            message: format!("pls input {desc} time"),
+        }),
+    }
 }

@@ -1,0 +1,5 @@
+1970-01-01T00:00:04Z INFO retry before
+1970-01-01T08:00:05+08:00 WARN retry start
+1970-01-01T00:00:06Z ERROR retry end
+1970-01-01T00:00:07Z INFO retry after
+INFO retry without timestamp

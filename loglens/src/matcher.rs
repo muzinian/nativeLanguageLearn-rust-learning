@@ -344,7 +344,7 @@ mod tests {
     fn new_time_range_start_gt_end() {
         let start_end_filter = TimeRangeFilter::new(200, 100);
 
-        assert!(matches!(start_end_filter, None));
+        assert!(start_end_filter.is_none());
     }
     #[test]
     fn range_filter_no_time() {
